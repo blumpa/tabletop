@@ -1,14 +1,6 @@
 (function() {
   'use strict';
 
-  var inNodeJS = typeof process !== 'undefined' && !process.browser;
-
-  var request = function requestNotProvided() {
-    throw new Error("The 'request' module is only available while running in Node.");
-  };
-  if(inNodeJS) { // This will get stripped out by Uglify, and Webpack will not include it
-    request = require('request');
-  }
 
   var supportsCORS = false;
   var inLegacyIE = false;
@@ -134,7 +126,7 @@
 
     this.baseJsonPath = '/feeds/worksheets/' + this.key + '/' + this.sheetPrivacy +'/basic?alt=';
 
-    if (inNodeJS || supportsCORS) {
+    if (supportsCORS) {
       this.baseJsonPath += 'json';
     } else {
       this.baseJsonPath += 'json-in-script';
@@ -187,9 +179,7 @@
     requestData: function(path, callback) {
       this.log('Requesting', path);
       this.encounteredError = false;
-      if (inNodeJS) {
-        this.serverSideFetch(path, callback);
-      } else {
+     
         //CORS only works in IE8/9 across the same protocol
         //You must have your server on HTTPS to talk to Google, or it'll fall back on injection
         var protocol = this.endpoint.split('//').shift() || 'http';
@@ -198,7 +188,7 @@
         } else {
           this.injectScript(path, callback);
         }
-      }
+      
     },
 
     /*
@@ -278,20 +268,6 @@
       document.getElementsByTagName('script')[0].parentNode.appendChild(script);
     },
 
-    /*
-      This will only run if tabletop is being run in node.js
-    */
-    serverSideFetch: function(path, callback) {
-      var self = this;
-
-      this.log('Fetching', this.endpoint + path);
-      request({url: this.endpoint + path, json: true}, function(err, resp, body) {
-        if (err) {
-          return console.error(err);
-        }
-        callback.call(self, body);
-      });
-    },
 
     /*
       Is this a sheet you want to pull?
@@ -362,7 +338,7 @@
           var linkIdx = data.feed.entry[i].link.length-1;
           var sheetId = data.feed.entry[i].link[linkIdx].href.split('/').pop();
           var jsonPath = '/feeds/list/' + this.key + '/' + sheetId + '/' + this.sheetPrivacy + '/values?alt=';
-          if (inNodeJS || supportsCORS) {
+          if (supportsCORS) {
             jsonPath += 'json';
           } else {
             jsonPath += 'json-in-script';
